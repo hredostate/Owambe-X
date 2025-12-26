@@ -1,14 +1,13 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-// Fix: Added PartyPopper to imports
-import { MapPin, Calendar, Users, Trophy, Tv, AlertCircle, PartyPopper } from 'lucide-react';
-import { Recipient, RecipientType, Event, EventStatus, PayoutMode } from '../types';
+import { MapPin, Calendar, Users, Tv, AlertCircle, PartyPopper } from 'lucide-react';
+import { Event, EventStatus, LeaderboardEntry, PayoutMode, Recipient, RecipientType, SprayCreatedPayload } from '../types';
 import RecipientCard from '../components/RecipientCard';
 import SprayModal from '../components/SprayModal';
+import LeaderboardPanel from '../components/LeaderboardPanel';
 import { callEdgeFunction } from '../lib/supabase';
+import { useEventRealtime } from '../hooks/useEventRealtime';
 
-// Mock Data
 const MOCK_EVENT: Event = {
   id: 'event-123',
   title: 'Segun & Funke 2024: The Union',
@@ -31,13 +30,13 @@ const MOCK_RECIPIENTS: Recipient[] = [
 
 const EventPage: React.FC = () => {
   const { id } = useParams();
-  const [event, setEvent] = useState<Event | null>(MOCK_EVENT);
+  const [event] = useState<Event | null>(MOCK_EVENT);
   const [selectedRecipient, setSelectedRecipient] = useState<Recipient | null>(null);
+  const [recentSprays, setRecentSprays] = useState<SprayCreatedPayload[]>([]);
 
   const handleSpray = async (amount: number, burst: number, vibe: string) => {
     if (!selectedRecipient) return;
-    
-    // Fix: callEdgeFunction now has proper return type
+
     const { error } = await callEdgeFunction('spray', {
       event_id: id,
       recipient_id: selectedRecipient.id,
@@ -50,12 +49,29 @@ const EventPage: React.FC = () => {
     if (error) throw error;
   };
 
+  const onSprayCreated = useCallback((payload: SprayCreatedPayload) => {
+    setRecentSprays((prev) => [payload, ...prev].slice(0, 15));
+  }, []);
+
+  useEventRealtime(id, onSprayCreated);
+
+  const leaderboard = useMemo<LeaderboardEntry[]>(() => {
+    const totals = new Map<string, number>();
+    recentSprays.forEach((spray) => {
+      totals.set(spray.sender_name, (totals.get(spray.sender_name) ?? 0) + spray.amount);
+    });
+
+    return Array.from(totals.entries())
+      .map(([name, total_sprayed]) => ({ name, total_sprayed }))
+      .sort((a, b) => b.total_sprayed - a.total_sprayed)
+      .slice(0, 5);
+  }, [recentSprays]);
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8 pb-32">
-      {/* Event Header */}
       <div className="relative p-8 rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
         <div className="absolute top-0 right-0 p-6 opacity-5">
-           <PartyPopper className="w-32 h-32" />
+          <PartyPopper className="w-32 h-32" />
         </div>
         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
           <div className="space-y-4">
@@ -75,8 +91,8 @@ const EventPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <Link 
-            to={`/screen/${id}`}
+          <Link
+            to={`/owambe/screen/${id}`}
             className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 rounded-2xl text-sm font-bold border border-white/10 transition-colors"
           >
             <Tv className="w-4 h-4" />
@@ -88,45 +104,24 @@ const EventPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between">
-             <h2 className="text-xl font-bold flex items-center gap-2">
-               <Users className="w-5 h-5 text-purple-500" />
-               Select Recipient
-             </h2>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Users className="w-5 h-5 text-purple-500" />
+              Select Recipient
+            </h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {MOCK_RECIPIENTS.map((r) => (
-              <RecipientCard 
-                key={r.id} 
-                recipient={r} 
-                onClick={() => setSelectedRecipient(r)} 
+              <RecipientCard
+                key={r.id}
+                recipient={r}
+                onClick={() => setSelectedRecipient(r)}
               />
             ))}
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
-            <h3 className="font-bold flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-yellow-500" />
-              Top Sprayers
-            </h3>
-            <div className="space-y-4">
-              {[
-                { name: 'Chief Adeleke', amount: 50000 },
-                { name: 'Hajia B.', amount: 35000 },
-                { name: 'Dr. Kunle', amount: 28000 },
-                { name: 'You', amount: 0, isMe: true },
-              ].map((entry, i) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-gray-500">#{i+1}</span>
-                    <span className={entry.isMe ? 'text-purple-400 font-bold' : 'font-medium'}>{entry.name}</span>
-                  </div>
-                  <span className="font-bold">₦{entry.amount.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <LeaderboardPanel title="Top Sprayers" entries={leaderboard} />
 
           <div className="p-6 bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-blue-500/20 rounded-3xl">
             <div className="flex gap-4">
@@ -141,8 +136,8 @@ const EventPage: React.FC = () => {
       </div>
 
       {selectedRecipient && (
-        <SprayModal 
-          recipient={selectedRecipient} 
+        <SprayModal
+          recipient={selectedRecipient}
           onClose={() => setSelectedRecipient(null)}
           onSpray={handleSpray}
         />

@@ -1,4 +1,3 @@
-
 export enum EventStatus {
   DRAFT = 'draft',
   LIVE = 'live',
@@ -68,4 +67,14 @@ export interface Spray {
 export interface LeaderboardEntry {
   name: string;
   total_sprayed: number;
+}
+
+export interface SprayCreatedPayload {
+  spray_id: string;
+  sender_name: string;
+  recipient_label: string;
+  amount: number;
+  burst_count: number;
+  vibe_pack: string;
+  created_at: string;
 }

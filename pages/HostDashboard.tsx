@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, Plus, Edit, Trash, ToggleRight, Share2, QrCode } from 'lucide-react';
+import { LayoutDashboard, Plus, Edit, Trash, ToggleRight, Share2, QrCode } from 'lucide-react';
 import { RecipientType } from '../types';
 
 const HostDashboard: React.FC = () => {
@@ -18,7 +17,7 @@ const HostDashboard: React.FC = () => {
           </h1>
           <p className="text-gray-400">Managing: Segun & Funke 2024</p>
         </div>
-        
+
         <div className="flex flex-wrap gap-3">
           <button className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl font-bold border border-white/10">
             <Share2 className="w-4 h-4" />
@@ -28,8 +27,8 @@ const HostDashboard: React.FC = () => {
             <QrCode className="w-4 h-4" />
             Event QR
           </button>
-          <Link 
-            to={`/screen/${id}`}
+          <Link
+            to={`/owambe/screen/${id}`}
             className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold transition-all"
           >
             Launch Screen Mode
@@ -56,7 +55,7 @@ const HostDashboard: React.FC = () => {
           <p className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-1">Event Status</p>
           <div className="flex items-center gap-3 mt-1">
             <h3 className="text-4xl font-black capitalize">{eventStatus}</h3>
-            <button 
+            <button
               onClick={() => setEventStatus(prev => prev === 'live' ? 'ended' : 'live')}
               className="p-1 hover:bg-white/10 rounded-lg"
             >

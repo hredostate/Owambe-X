@@ -1,16 +1,42 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PartyPopper, Search, PlusCircle, ArrowRight, Zap } from 'lucide-react';
+import { Search, PlusCircle, Zap } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { callEdgeFunction } from '../lib/supabase';
 
 const LandingPage: React.FC = () => {
   const [eventId, setEventId] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate();
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     if (eventId.trim()) {
-      navigate(`/event/${eventId}`);
+      navigate(`/owambe/event/${eventId}`);
+    }
+  };
+
+  const handleCreate = async () => {
+    setIsCreating(true);
+    try {
+      const { data, error } = await callEdgeFunction<{ event: { id: string } }>('create_event', {
+        title: 'My Owambe Party',
+        venue: 'Main Hall',
+        starts_at: new Date().toISOString(),
+        payout_mode: 'hold',
+        theme: 'classic'
+      });
+
+      if (error || !data?.event?.id) {
+        throw error ?? new Error('Failed to create event');
+      }
+
+      toast.success('Event created!');
+      navigate(`/owambe/host/${data.event.id}`);
+    } catch (err) {
+      toast.error('Could not create event. Please sign in.');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -28,16 +54,20 @@ const LandingPage: React.FC = () => {
           <p className="text-xl text-gray-400 max-w-2xl">
             Spray money in real-time with stunning animations. Create events, manage recipients, and watch the leaderboard heat up.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center lg:justify-start">
-            <button className="flex items-center justify-center gap-2 px-8 py-4 bg-purple-600 hover:bg-purple-500 rounded-2xl font-bold text-lg transition-all active:scale-95 shadow-xl shadow-purple-600/20">
+            <button
+              onClick={handleCreate}
+              disabled={isCreating}
+              className="flex items-center justify-center gap-2 px-8 py-4 bg-purple-600 hover:bg-purple-500 rounded-2xl font-bold text-lg transition-all active:scale-95 shadow-xl shadow-purple-600/20 disabled:opacity-60"
+            >
               <PlusCircle className="w-5 h-5" />
-              Create Event
+              {isCreating ? 'Creating...' : 'Create Event'}
             </button>
             <form onSubmit={handleJoin} className="flex-1 max-w-sm flex items-center p-1 bg-white/5 border border-white/10 rounded-2xl focus-within:border-purple-500 transition-colors">
-              <input 
-                type="text" 
-                placeholder="Enter Event ID..." 
+              <input
+                type="text"
+                placeholder="Enter Event ID..."
                 value={eventId}
                 onChange={(e) => setEventId(e.target.value)}
                 className="flex-1 bg-transparent px-4 py-3 focus:outline-none font-medium"
@@ -69,7 +99,7 @@ const LandingPage: React.FC = () => {
               </div>
             </div>
             <div className="space-y-4 -translate-y-8">
-               <div className="p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl">
+              <div className="p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl">
                 <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-4">
                   <span className="text-2xl">📺</span>
                 </div>
