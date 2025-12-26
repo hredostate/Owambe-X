@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { X, Flame, Sparkles, Music } from 'lucide-react';
 import { Recipient } from '../types';
@@ -26,11 +25,11 @@ const SprayModal: React.FC<SprayModalProps> = ({ recipient, onClose, onSpray }) 
   const handleSpray = async () => {
     setIsSpraying(true);
     try {
-      await onSpray(amount * 100, burst, vibe); // Convert to kobo
+      await onSpray(amount * 100, burst, vibe);
       toast.success(`Sprayed ₦${amount.toLocaleString()}!`);
       onClose();
     } catch (e) {
-      toast.error("Spray failed. Check your wallet.");
+      toast.error('Spray failed. Check your wallet.');
     } finally {
       setIsSpraying(false);
     }
@@ -50,12 +49,11 @@ const SprayModal: React.FC<SprayModalProps> = ({ recipient, onClose, onSpray }) 
         </div>
 
         <div className="p-6 space-y-8">
-          {/* Amount Grid */}
           <div className="space-y-3">
             <label className="text-xs uppercase tracking-widest text-gray-500 font-bold">Presets (₦)</label>
             <div className="grid grid-cols-3 gap-2">
               {PRESETS.map((p) => (
-                <button 
+                <button
                   key={p}
                   onClick={() => setAmount(p)}
                   className={`py-3 rounded-xl border transition-all font-bold ${amount === p ? 'bg-purple-600 border-purple-400 text-white' : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'}`}
@@ -64,7 +62,7 @@ const SprayModal: React.FC<SprayModalProps> = ({ recipient, onClose, onSpray }) 
                 </button>
               ))}
             </div>
-            <input 
+            <input
               type="number"
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
@@ -73,26 +71,24 @@ const SprayModal: React.FC<SprayModalProps> = ({ recipient, onClose, onSpray }) 
             />
           </div>
 
-          {/* Burst Slider */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <label className="text-xs uppercase tracking-widest text-gray-500 font-bold">Burst Count</label>
               <span className="text-purple-400 font-bold">{burst} Notes</span>
             </div>
-            <input 
-              type="range" min="1" max="50" 
-              value={burst} 
+            <input
+              type="range" min="1" max="50"
+              value={burst}
               onChange={(e) => setBurst(Number(e.target.value))}
               className="w-full accent-purple-600 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
             />
           </div>
 
-          {/* Vibe Pack */}
           <div className="space-y-3">
             <label className="text-xs uppercase tracking-widest text-gray-500 font-bold">Vibe Pack</label>
             <div className="grid grid-cols-3 gap-3">
               {VIBES.map((v) => (
-                <button 
+                <button
                   key={v.id}
                   onClick={() => setVibe(v.id)}
                   className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${vibe === v.id ? 'bg-white/10 border-white/30' : 'bg-transparent border-transparent grayscale opacity-50'}`}
@@ -106,7 +102,7 @@ const SprayModal: React.FC<SprayModalProps> = ({ recipient, onClose, onSpray }) 
         </div>
 
         <div className="p-6 pt-0">
-          <button 
+          <button
             disabled={isSpraying}
             onClick={handleSpray}
             className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-purple-900/20 active:scale-95 transition-all disabled:opacity-50"

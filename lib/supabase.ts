@@ -1,21 +1,15 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
-// Mock client for UI prototype - In real production, replace with @supabase/supabase-js
-// Assuming environment variables are injected.
-export const SUPABASE_URL = "https://your-project.supabase.co";
-export const SUPABASE_ANON_KEY = "your-anon-key";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-// Helper to simulate calling Edge Functions
-// Fix: Added explicit return type to resolve destructuring error "Property 'error' does not exist on type '{}'"
-export const callEdgeFunction = async (name: string, body: any): Promise<{ data: any; error: any }> => {
-  console.log(`Calling Edge Function: ${name}`, body);
-  // Real implementation: 
-  // const { data, error } = await supabase.functions.invoke(name, { body });
-  // return { data, error };
-  
-  // Simulated success for demo
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ data: { success: true }, error: null });
-    }, 800);
-  });
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Supabase env vars missing. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.');
+}
+
+export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '');
+
+export const callEdgeFunction = async <T,>(name: string, body: Record<string, unknown>) => {
+  const { data, error } = await supabase.functions.invoke<T>(name, { body });
+  return { data, error };
 };

@@ -1,103 +1,80 @@
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-// Fix: Added PartyPopper to imports
-import { Trophy, Flame, Coins, Zap, PartyPopper } from 'lucide-react';
-import { Spray } from '../types';
-
-interface Particle {
-  id: string;
-  x: number;
-  y: number;
-  rotation: number;
-  scale: number;
-  duration: number;
-}
+import { Coins, PartyPopper, Volume2, VolumeX } from 'lucide-react';
+import { LeaderboardEntry, Spray, SprayCreatedPayload } from '../types';
+import { useEventRealtime } from '../hooks/useEventRealtime';
+import ScreenOverlayAnimator from '../components/ScreenOverlayAnimator';
+import LeaderboardPanel from '../components/LeaderboardPanel';
+import HeatMeter from '../components/HeatMeter';
 
 const ScreenMode: React.FC = () => {
   const { id } = useParams();
   const [sprays, setSprays] = useState<Spray[]>([]);
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const [heat, setHeat] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [history, setHistory] = useState<Spray[]>([]);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
-  // Sound triggers
-  useEffect(() => {
-    audioRef.current = new Audio('https://www.soundjay.com/buttons/button-42.mp3');
-  }, []);
-
-  const triggerAnimation = useCallback((count: number) => {
-    const newParticles: Particle[] = Array.from({ length: Math.min(count, 30) }).map(() => ({
-      id: Math.random().toString(36),
-      x: Math.random() * 100,
-      y: 110,
-      rotation: Math.random() * 360,
-      scale: 0.5 + Math.random() * 1,
-      duration: 2 + Math.random() * 2
-    }));
-
-    setParticles(prev => [...prev, ...newParticles]);
-    setHeat(prev => Math.min(prev + count, 100));
-
-    // Cleanup after animation
-    setTimeout(() => {
-      setParticles(prev => prev.filter(p => !newParticles.find(np => np.id === p.id)));
-    }, 4000);
-
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
-    }
-  }, []);
-
-  // Simulated Realtime
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() > 0.7) {
-        const mockSpray: Spray = {
-          id: Math.random().toString(),
-          event_id: id || '',
-          sender_name: ['Tunde', 'Chioma', 'Alhaji', 'Banky', 'Yinka'][Math.floor(Math.random() * 5)],
-          recipient_label: 'The Celebrant',
-          amount: 50000,
-          burst_count: Math.floor(Math.random() * 20) + 1,
-          vibe_pack: 'classic',
-          created_at: new Date().toISOString()
-        };
-        setSprays(prev => [mockSpray, ...prev].slice(0, 10));
-        triggerAnimation(mockSpray.burst_count);
-      }
-    }, 3000);
-
-    // Heat decay
-    const decay = setInterval(() => {
-      setHeat(prev => Math.max(0, prev - 1));
-    }, 500);
-
-    return () => {
-      clearInterval(interval);
-      clearInterval(decay);
+  const handleSprayCreated = useCallback((payload: SprayCreatedPayload) => {
+    const spray: Spray = {
+      id: payload.spray_id,
+      event_id: id ?? '',
+      sender_name: payload.sender_name,
+      recipient_label: payload.recipient_label,
+      amount: payload.amount,
+      burst_count: payload.burst_count,
+      vibe_pack: payload.vibe_pack,
+      created_at: payload.created_at,
     };
-  }, [id, triggerAnimation]);
+
+    setSprays((prev) => [spray, ...prev].slice(0, 8));
+    setHistory((prev) => [spray, ...prev].slice(0, 200));
+  }, [id]);
+
+  const { connected } = useEventRealtime(id, handleSprayCreated);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const totalsLastMinute = useMemo(() => {
+    const cutoff = now - 60_000;
+    return history.reduce((sum, spray) => {
+      if (new Date(spray.created_at).getTime() >= cutoff) {
+        return sum + spray.amount;
+      }
+      return sum;
+    }, 0);
+  }, [history, now]);
+
+  const heat = Math.min(100, Math.round(totalsLastMinute / 100000));
+
+  const topSprayers = useMemo<LeaderboardEntry[]>(() => {
+    const totals = new Map<string, number>();
+    history.forEach((spray) => {
+      totals.set(spray.sender_name, (totals.get(spray.sender_name) ?? 0) + spray.amount);
+    });
+    return Array.from(totals.entries())
+      .map(([name, total_sprayed]) => ({ name, total_sprayed }))
+      .sort((a, b) => b.total_sprayed - a.total_sprayed)
+      .slice(0, 6);
+  }, [history]);
+
+  const topRecipients = useMemo<LeaderboardEntry[]>(() => {
+    const totals = new Map<string, number>();
+    history.forEach((spray) => {
+      totals.set(spray.recipient_label, (totals.get(spray.recipient_label) ?? 0) + spray.amount);
+    });
+    return Array.from(totals.entries())
+      .map(([name, total_sprayed]) => ({ name, total_sprayed }))
+      .sort((a, b) => b.total_sprayed - a.total_sprayed)
+      .slice(0, 6);
+  }, [history]);
 
   return (
     <div className="fixed inset-0 bg-black z-[1000] overflow-hidden flex flex-col font-sans select-none">
-      {/* Background Particles Overlay */}
-      {particles.map(p => (
-        <div 
-          key={p.id}
-          className="money-particle"
-          style={{
-            left: `${p.x}%`,
-            fontSize: `${24 * p.scale}px`,
-            animationDuration: `${p.duration}s`
-          }}
-        >
-          {['💵', '💸', '💰', '✨'][Math.floor(Math.random() * 4)]}
-        </div>
-      ))}
+      <ScreenOverlayAnimator sprays={sprays} soundEnabled={soundEnabled} />
 
-      {/* Top Banner */}
       <div className="h-24 bg-gradient-to-b from-purple-900/40 to-transparent flex items-center justify-between px-12 border-b border-white/5 relative z-10">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-purple-600 rounded-2xl">
@@ -108,41 +85,43 @@ const ScreenMode: React.FC = () => {
             <p className="text-purple-400 font-bold text-sm tracking-widest uppercase">Live Celebration Feed</p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-12">
-          <div className="flex flex-col items-end">
-            <div className="flex items-center gap-2 text-yellow-500">
-               <Flame className={`w-6 h-6 ${heat > 50 ? 'animate-bounce' : ''}`} />
-               <span className="text-2xl font-black">{heat}°C</span>
-            </div>
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest">Party Heat Index</p>
-          </div>
+
+        <div className="flex items-center gap-6">
           <div className="text-right">
-            <div className="text-3xl font-black text-white">₦2,450,000</div>
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Total Sprayed Today</p>
+            <div className="text-3xl font-black text-white">₦{(history.reduce((sum, spray) => sum + spray.amount, 0) / 100).toLocaleString()}</div>
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Total Sprayed</p>
           </div>
+          <button
+            onClick={() => setSoundEnabled((prev) => !prev)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/10 hover:bg-white/20 text-sm font-bold"
+          >
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            {soundEnabled ? 'Sound On' : 'Sound Off'}
+          </button>
+          <span className={`text-xs uppercase tracking-widest ${connected ? 'text-green-400' : 'text-gray-500'}`}>
+            {connected ? 'Live' : 'Connecting'}
+          </span>
         </div>
       </div>
 
       <div className="flex-1 flex gap-8 p-8 relative z-10 overflow-hidden">
-        {/* Left Side: Feed */}
         <div className="flex-1 flex flex-col gap-4">
           {sprays.map((s, i) => (
-            <div 
+            <div
               key={s.id}
-              className={`flex items-center gap-6 p-6 bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl animate-in slide-in-from-left duration-500 ${i === 0 ? 'scale-105 border-purple-500/50 shadow-2xl shadow-purple-900/20 bg-white/10' : 'opacity-60 scale-95'}`}
+              className={`flex items-center gap-6 p-6 bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl animate-in slide-in-from-left duration-500 ${i === 0 ? 'scale-105 border-purple-500/50 shadow-2xl shadow-purple-900/20 bg-white/10' : 'opacity-70 scale-95'}`}
             >
               <div className={`p-4 rounded-2xl ${i === 0 ? 'bg-purple-600' : 'bg-white/10'}`}>
-                <Zap className="w-8 h-8" />
+                <PartyPopper className="w-8 h-8" />
               </div>
               <div className="flex-1">
-                 <p className="text-sm text-gray-500 font-bold uppercase tracking-widest">Incoming Spray</p>
-                 <h2 className="text-3xl font-black">
-                   <span className="text-purple-400">{s.sender_name}</span> sprayed <span className="text-white">{s.recipient_label}</span>
-                 </h2>
+                <p className="text-sm text-gray-500 font-bold uppercase tracking-widest">Incoming Spray</p>
+                <h2 className="text-3xl font-black">
+                  <span className="text-purple-400">{s.sender_name}</span> sprayed <span className="text-white">{s.recipient_label}</span>
+                </h2>
               </div>
               <div className="text-4xl font-black text-white">
-                ₦{(s.amount/100).toLocaleString()}
+                ₦{(s.amount / 100).toLocaleString()}
               </div>
             </div>
           ))}
@@ -150,66 +129,26 @@ const ScreenMode: React.FC = () => {
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 opacity-30">
               <PartyPopper className="w-32 h-32" />
               <h2 className="text-3xl font-bold uppercase tracking-tighter">Waiting for the first vibe...</h2>
-              <p className="text-lg uppercase tracking-widest">Scan QR to join the spraying team</p>
+              <p className="text-lg uppercase tracking-widest">Share the event code to start spraying</p>
             </div>
           )}
         </div>
 
-        {/* Right Side: Leaderboard */}
-        <div className="w-[450px] flex flex-col gap-6">
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[40px] p-8 flex-1 space-y-8 overflow-hidden relative">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
-                <Trophy className="w-8 h-8 text-yellow-500" />
-                Table of Honor
-              </h3>
-            </div>
-
-            <div className="space-y-6">
-              {[
-                { name: 'Chief Adeleke', total: 450000, rank: 1, color: 'text-yellow-400' },
-                { name: 'Alhaji G.', total: 320000, rank: 2, color: 'text-gray-300' },
-                { name: 'Princess Funmi', total: 280000, rank: 3, color: 'text-amber-600' },
-                { name: 'Dr. Kunle', total: 150000, rank: 4, color: 'text-white' },
-                { name: 'Engr. Segun', total: 120000, rank: 5, color: 'text-white' },
-                { name: 'Mrs. Balogun', total: 95000, rank: 6, color: 'text-white' },
-              ].map((entry) => (
-                <div key={entry.rank} className="flex items-center justify-between group">
-                  <div className="flex items-center gap-4">
-                    <span className={`text-2xl font-black w-8 ${entry.color}`}>#{entry.rank}</span>
-                    <span className="text-2xl font-bold group-hover:text-purple-400 transition-colors">{entry.name}</span>
-                  </div>
-                  <div className="text-2xl font-black text-white">
-                    ₦{entry.total.toLocaleString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Event Info Card */}
-            <div className="absolute bottom-8 left-8 right-8 p-6 bg-purple-600/20 border border-purple-500/30 rounded-3xl">
-              <p className="text-xs font-black uppercase tracking-widest text-purple-400 mb-2">Connect to Spray</p>
-              <div className="flex items-center gap-4">
-                <div className="bg-white p-2 rounded-xl">
-                  {/* Mock QR */}
-                  <div className="w-16 h-16 bg-black flex items-center justify-center text-[10px] text-white p-1 text-center font-bold">
-                    OWAMBE SCAN
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-bold text-lg leading-tight">Party ID: {id?.slice(0, 6).toUpperCase()}</h4>
-                  <p className="text-xs text-gray-500">owambe.party/join</p>
-                </div>
-              </div>
-            </div>
+        <div className="w-[420px] flex flex-col gap-6">
+          <HeatMeter heat={heat} totalLastMinute={totalsLastMinute} />
+          <LeaderboardPanel title="Top Sprayers" entries={topSprayers} />
+          <LeaderboardPanel title="Top Recipients" entries={topRecipients} accent="text-purple-400" />
+          <div className="bg-purple-600/20 border border-purple-500/30 rounded-3xl p-6 space-y-2">
+            <p className="text-xs font-black uppercase tracking-widest text-purple-300">Connect to Spray</p>
+            <h4 className="font-bold text-lg leading-tight">Party ID: {id?.slice(0, 6).toUpperCase()}</h4>
+            <p className="text-xs text-gray-300">owambe.party/join</p>
           </div>
         </div>
       </div>
-      
-      {/* Live Activity Marquee */}
+
       <div className="h-16 bg-white/5 flex items-center border-t border-white/5 overflow-hidden">
         <div className="whitespace-nowrap animate-marquee flex gap-12 text-sm font-black uppercase tracking-[0.2em] text-gray-500">
-          <span>• NEW SPRAY FROM TUNDE • CHIOMA JOINED THE PARTY • LEADERBOARD UPDATED • CELEBRANT CAKE CUTTING COMMENCING SOON • NEW SPRAY FROM TUNDE • CHIOMA JOINED THE PARTY • LEADERBOARD UPDATED</span>
+          <span>• NEW SPRAY ALERT • LEADERBOARD UPDATED • KEEP THE VIBES GOING • NEW SPRAY ALERT • LEADERBOARD UPDATED • KEEP THE VIBES GOING</span>
         </div>
       </div>
 
