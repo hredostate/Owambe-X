@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Owambe Mode</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Space Grotesk', sans-serif; overflow-x: hidden; }
+      .bg-party { background: radial-gradient(circle at top right, #3b0764, #0f172a, #000); }
+      @keyframes float {
+        0% { transform: translateY(110vh) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(-20vh) rotate(360deg); opacity: 0; }
+      }
+      .money-particle {
+        position: absolute;
+        pointer-events: none;
+        animation: float 3s linear forwards;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
+    "react-hot-toast": "https://esm.sh/react-hot-toast@^2.6.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-party text-white">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

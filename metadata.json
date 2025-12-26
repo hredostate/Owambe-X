@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Owambe Mode",
+  "description": "Digital money spraying platform for parties with real-time animations, live leaderboards, and a secure double-entry ledger.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
